@@ -18,9 +18,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: create file
+      - name: edit file
         run: |
-          echo ${{ github.job }} >> run-file.txt
+          echo ${{ github.run_number }} >> run-file.txt
           cat run-file.txt
 
       - name: commit
