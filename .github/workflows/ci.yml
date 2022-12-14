@@ -5,86 +5,32 @@ on:
   push:
     branches:
       - 'feature/*'
-      - '!master'
-      - '!main'
-  # pull_request:
-  #   branches: 
-  #     - 'master'
-  #     - 'main'
-  # release:
-  #   types:
-  #     - 'created'
+      - 'main'
 
 env:
   IMAGE_NAME: "gitops-argocd"
 
 jobs:
-  build:
-    name: Build and Pushing the Image
-    runs-on: ubuntu-latest
-    outputs:
-      TAG_VERSION: ${{ steps.set-tag.outputs.tag-output }}
-    steps:      
-      - uses: actions/checkout@v3
-      
-      - name: Login to the Registry
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: Set the tag
-        id: set-tag
-        run: |
-          git_hash=$(git rev-parse --short ${{ github.sha }})
-          echo "TAG=$git_hash" >> $GITHUB_ENV
-          echo "tag-output=$git_hash" >> $GITHUB_OUTPUT
-
-      - name: Build and Push the Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USER }}/$IMAGE_NAME:${{ env.TAG }} .
-          docker push ${{ secrets.DOCKER_USER }}/$IMAGE_NAME:${{ env.TAG }}
-
   deploy: 
     name: Deploy
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Checkout Helm Chart repository
+      - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          repository: gudiaolabs/gudiaolabs-charts
-          persist-credentials: false
-          fetch-depth: 0 
 
-      - name: debug
+      - name: create file
         run: |
-          ls -lha
-          ls -lha ./${{ env.IMAGE_NAME }}
-
-      - name: update k8s
-        run: |
-          git_hash=${{ needs.build.outputs.TAG_VERSION }}
-          tag=$(cat ./${{ env.IMAGE_NAME }}/values.yaml | grep tag: | awk '{print $2}')
-          sed -i "s/$tag/$git_hash/" ./${{ env.IMAGE_NAME }}/values.yaml
+          echo ${{ github.job }} >> run-file.txt
+          cat run-file.txt
 
       - name: commit
         run: |
           git config user.email "github-actions@github.com"
           git config user.name "github-actions"
-          git commit -am "change image tag"
+          git commit -am "New Version"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: feature/argocd-tests
-
-
-      # - name: push
-      #   uses: ad-m/github-push-action@master
-      #   with: 
-      #     repository: gudiaolabs/gudiaolabs-charts
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}	
-      #     feature/argocd-tests
 
